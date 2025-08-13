@@ -5,9 +5,6 @@ pipeline {
         ECR_REPO = "992382545251.dkr.ecr.us-east-1.amazonaws.com/flask-jenkins-demo"
         IMAGE_TAG = "latest"
         AWS_REGION = "us-east-1"
-        EC2_USER = "ubuntu"
-        EC2_HOST = "44.202.189.98"
-        SSH_CREDENTIALS = "ec2-ssh-credentials-id"
     }
 
     stages {
@@ -41,19 +38,17 @@ pipeline {
             }
         }
 
-        stage('Deploy to EC2') {
+        stage('Deploy from ECR') {
             steps {
-                script {
-                    sshagent([SSH_CREDENTIALS]) {
-                        sh """
-                        ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} "
-                        docker pull ${ECR_REPO}:${IMAGE_TAG} &&
-                        docker stop flask-app || true &&
-                        docker rm flask-app || true &&
-                        docker run -d -p 5000:5000 --name flask-app ${ECR_REPO}:${IMAGE_TAG}"
-                        """
-                    }
-                }
+                // Pull the image from ECR
+                sh "docker pull ${ECR_REPO}:${IMAGE_TAG}"
+                
+                // Stop and remove any existing container
+                sh "docker stop flask-app || true"
+                sh "docker rm flask-app || true"
+                
+                // Run the container
+                sh "docker run -d --name flask-app -p 5000:5000 ${ECR_REPO}:${IMAGE_TAG}"
             }
         }
     }
@@ -64,4 +59,3 @@ pipeline {
         }
     }
 }
-
